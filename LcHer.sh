@@ -95,6 +95,7 @@ gatk HaplotypeCaller \
 	-R $REF_GENOME_FA \
 	-I ${sample}_aligned_marked_bqsr.bam \
 	-O ${sample}_variants.vcf.gz \
+	-L $TARGETS \
 	--native-pair-hmm-threads $THREADS
 
 gatk VariantFiltration \
