@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# LcHer version 1.0.0
+# LcHer version 1.2.0
 
 # Set the directory where the FASTQ files are located
 FASTQ_DIR="."
@@ -34,59 +34,59 @@ process_sample() {
 #-------------------------- Filtering & Alignment ---------------------------#
 
 # Trimming first 5bp (MAX protocol)
-conda run -n FASTP fastp -i ${sample}_1.fq.gz -I ${sample}_2.fq.gz \
-	-o ${sample}_trimmed_1.fq.gz -O ${sample}_trimmed_2.fq.gz \
-	-f 5 -F 5 \
-	-w $THREADS -V \
-	-h ${sample}_trim_report.html
+#conda run -n FASTP fastp -i ${sample}_1.fq.gz -I ${sample}_2.fq.gz \
+#	-o ${sample}_trimmed_1.fq.gz -O ${sample}_trimmed_2.fq.gz \
+#	-f 5 -F 5 \
+#	-w $THREADS -V \
+#	-h ${sample}_trim_report.html
 
 # Trimming automated
-conda run -n FASTP fastp -i ${sample}_1.fq.gz -I ${sample}_2.fq.gz \
-	-o ${sample}_trimmed_1.fq.gz -O ${sample}_trimmed_2.fq.gz \
-	-w $THREADS -V \
-	-h ${sample}_trim_report.html
+#conda run -n FASTP fastp -i ${sample}_1.fq.gz -I ${sample}_2.fq.gz \
+#	-o ${sample}_trimmed_1.fq.gz -O ${sample}_trimmed_2.fq.gz \
+#	-w $THREADS -V \
+#	-h ${sample}_trim_report.html
 
-mkdir trimmed
-mv ${sample}_trimmed* trimmed
+#mkdir trimmed
+#mv ${sample}_trimmed* trimmed
 
 # Alignment
-bwa-mem2 mem -R "@RG\tID:${sample}\tLB:exome_lib\tPL:MGISEQ\tPU:unit1\tSM:${sample}" -t $THREADS \
-	$REF_GENOME \
-	trimmed/${sample}_trimmed_1.fq.gz \
-	trimmed/${sample}_trimmed_2.fq.gz | samtools view -@ $THREADS -bS | samtools sort -@ $THREADS -o ${sample}_aligned_rg.bam
+#bwa-mem2 mem -R "@RG\tID:${sample}\tLB:exome_lib\tPL:MGISEQ\tPU:unit1\tSM:${sample}" -t $THREADS \
+#	$REF_GENOME \
+#	trimmed/${sample}_trimmed_1.fq.gz \
+#	trimmed/${sample}_trimmed_2.fq.gz | samtools view -@ $THREADS -bS | samtools sort -@ $THREADS -o ${sample}_aligned_rg.bam
 
 # Mark Duplicates
-gatk MarkDuplicates \
-	-I ${sample}_aligned_rg.bam \
-	-O ${sample}_aligned_marked.bam \
-	-M ${sample}_output.metrics.txt \
-	--ASSUME_SORT_ORDER coordinate \
-	--CREATE_INDEX true \
-	--OPTICAL_DUPLICATE_PIXEL_DISTANCE 2500
+#gatk MarkDuplicates \
+#	-I ${sample}_aligned_rg.bam \
+#	-O ${sample}_aligned_marked.bam \
+#	-M ${sample}_output.metrics.txt \
+#	--ASSUME_SORT_ORDER coordinate \
+#	--CREATE_INDEX true \
+#	--OPTICAL_DUPLICATE_PIXEL_DISTANCE 2500
 
-rm ${sample}_aligned_rg.bam*
+#rm ${sample}_aligned_rg.bam*
 
 # Base Quality Score Recalibration
-gatk BaseRecalibrator \
-	--java-options "-Xmx48G -XX:+UseParallelGC -XX:ParallelGCThreads=$THREADS" \
-	-R $REF_GENOME_FA \
-	-I ${sample}_aligned_marked.bam \
-	--known-sites $DBSNP_138 \
-	--known-sites $Mills_1000G \
-	--known-sites $Phase1_1000G \
-	--known-sites $Known_Indels \
-	-L $TARGETS \
-	-O ${sample}_recal_data.table
+#gatk BaseRecalibrator \
+#	--java-options "-Xmx48G -XX:+UseParallelGC -XX:ParallelGCThreads=$THREADS" \
+#	-R $REF_GENOME_FA \
+#	-I ${sample}_aligned_marked.bam \
+#	--known-sites $DBSNP_138 \
+#	--known-sites $Mills_1000G \
+#	--known-sites $Phase1_1000G \
+#	--known-sites $Known_Indels \
+#	-L $TARGETS \
+#	-O ${sample}_recal_data.table
 
 # Apply BQSR
-gatk ApplyBQSR \
-	--java-options "-Xmx48G -XX:+UseParallelGC -XX:ParallelGCThreads=$THREADS" \
-	-R $REF_GENOME_FA \
-	-I ${sample}_aligned_marked.bam \
-	--bqsr-recal-file ${sample}_recal_data.table \
-	-O ${sample}_aligned_marked_bqsr.bam
+#gatk ApplyBQSR \
+#	--java-options "-Xmx48G -XX:+UseParallelGC -XX:ParallelGCThreads=$THREADS" \
+#	-R $REF_GENOME_FA \
+#	-I ${sample}_aligned_marked.bam \
+#	--bqsr-recal-file ${sample}_recal_data.table \
+#	-O ${sample}_aligned_marked_bqsr.bam
 
-rm ${sample}_aligned_marked.bam*
+#rm ${sample}_aligned_marked.bam*
 
 #-------------------------- GATK Variant Calling ---------------------------#
 
@@ -215,26 +215,24 @@ mv ${sample}_GATK_merged.tsv tmp/
 mv ${sample}_GATK.snpsift.tsv tmp/
 mv ${sample}_GATK.filtered.norm.snpeff.vcf.gz tmp/
 
-#-------------------------- Variant Prioritization  ---------------------------#
-
-# Prioritize Variants
-python LcPrio.py -i ${sample}_GATK_merged_split.tsv -o ${sample}_variants.prioritized.tsv -f tsv
-
-#-------------------------- MAGI ACMG implementation ---------------------------#
+#-------------------------- MAGI ACMG Implementation & Prioritization ---------------------------#
 
 # Implement MAGI Vus sub classification
-python LcMagi.py ${sample}_variants.prioritized.tsv ${sample}_variants.prioritized.magi.tsv
+python LcMagi.py ${sample}_GATK_merged_split.tsv ${sample}_GATK_magi.tsv
+
+
+# Prioritize Variants
+python LcPrio.py ${sample}_GATK_magi.tsv ${sample}_GATK_prioritized.tsv
 
 #-------------------------- Process File for HTML ---------------------------#
 
 # Create new info columns
-python LcPrehtml.py ${sample}_variants.prioritized.magi.tsv ${sample}_variants.prioritized.magi.prehtml.tsv
+python LcPrehtml.py ${sample}_GATK_prioritized.tsv ${sample}_GATK_prehtml.tsv
 
-mv ${sample}_variants.prioritized.magi.tsv tmp/
 mv ${sample}_GATK_merged_split.tsv tmp/
+mv ${sample}_GATK_magi.tsv tmp/
+mv ${sample}_GATK_prioritized.tsv tmp/
 mv ${sample}_variants.prioritized.magi_VUS_summary.tsv tmp/
-mv ${sample}_variants.prioritized.summary.txt tmp/
-mv ${sample}_variants.prioritized.tsv tmp/
 
 #-------------------------- Extract QC ---------------------------#
 
@@ -243,7 +241,7 @@ bash LcQc.py
 #-------------------------- IGV report ---------------------------#
 
 # Create bed file (top 500)
-cut -f 1,2,3,10 ${sample}_variants.prioritized.magi.prehtml.tsv | head -n 500 > ${sample}_variants.prioritized.magi.prehtml.bed
+cut -f 1,2,3,10 ${sample}_GATK_prehtml.tsv | head -n 500 > ${sample}_GATK_prehtml.bed
 
 create_report ${sample}_variants.prioritized.magi.prehtml.bed \
 	--fasta $REF_GENOME_FA \
@@ -253,7 +251,7 @@ create_report ${sample}_variants.prioritized.magi.prehtml.bed \
 
 #-------------------------- HTML Report ---------------------------#
 
-python LcHtml.py ${sample}_variants.prioritized.magi.prehtml.tsv ${sample}.html ${sample}_coverage_metrics.txt
+python LcHtml.py ${sample}_GATK_prehtml.tsv ${sample}.html ${sample}_coverage_metrics.txt
 
 }
 
