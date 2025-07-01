@@ -7,8 +7,8 @@ FASTQ_DIR="."
 
 # Set paths to required tools and reference files
 # Alignment-Variant Calling
-REF_GENOME="/home/administrator/Lc/LcDatabase_hg19/bwa_index/hs37d5/hs37d5"
-REF_GENOME_FA="/home/administrator/Lc/LcDatabase_hg19/bwa_index/hs37d5/hs37d5.fa"
+REF_GENOME="/home/administrator/Lc/LcDatabase_hg19/bwa_index/hs37d5/hs37d5.noalt"
+REF_GENOME_FA="/home/administrator/Lc/LcDatabase_hg19/bwa_index/hs37d5/hs37d5.noalt.fa"
 TARGETS="/home/administrator/Lc/LcDatabase_hg19/bed_files/Hereditary_HG19/Hereditary_3455871_hg19.adj50bp.bed"
 # Annotation
 SNPEFF_JAR="/home/administrator/snpeff/snpEff/snpEff.jar"
