@@ -253,6 +253,11 @@ create_report ${sample}_GATK_prehtml.bed \
 
 python LcHtml.py ${sample}_GATK_prehtml.tsv ${sample}.html ${sample}_coverage_metrics.txt
 
+#-------------------------- CNV Report ---------------------------#
+
+# Create Html report for CNV
+python LcHerCNV_html.py ${sample}_CNV_prioritized.tsv ${sample}_CNV.html
+
 }
 
 # Main script
